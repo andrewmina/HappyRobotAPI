@@ -5,7 +5,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse
 
-API_KEY = os.getenv("API_KEY", "dev-key")
+API_KEY = os.getenv("API_KEY", "")
 DB_PATH = os.getenv("DB_PATH", "calls.db")
 
 app = FastAPI(title="Inbound Carrier Sales API")
