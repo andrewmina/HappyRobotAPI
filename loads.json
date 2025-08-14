@@ -1,0 +1,33 @@
+[
+    {
+      "load_id": "CHI-ATL-0815-001",
+      "origin": "Chicago, IL",
+      "destination": "Atlanta, GA",
+      "pickup_datetime": "2025-08-15T08:00:00-05:00",
+      "delivery_datetime": "2025-08-16T12:00:00-04:00",
+      "equipment_type": "Dry Van",
+      "loadboard_rate": 1800,
+      "notes": "Drop & hook, 26 pallets",
+      "weight": 38000,
+      "commodity_type": "Paper goods",
+      "num_of_pieces": 26,
+      "miles": 716,
+      "dimensions": "48'x102\""
+    },
+    {
+      "load_id": "DAL-MEM-0815-002",
+      "origin": "Dallas, TX",
+      "destination": "Memphis, TN",
+      "pickup_datetime": "2025-08-15T10:00:00-05:00",
+      "delivery_datetime": "2025-08-16T06:00:00-05:00",
+      "equipment_type": "Reefer",
+      "loadboard_rate": 1500,
+      "notes": "Live load/unload, 34ºF",
+      "weight": 32000,
+      "commodity_type": "Frozen food",
+      "num_of_pieces": 20,
+      "miles": 452,
+      "dimensions": "53'x102\""
+    }
+  ]
+  
