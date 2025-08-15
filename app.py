@@ -82,7 +82,7 @@ def health():
 def search_loads(crit: SearchCriteria, x_api_key: str | None = Header(None)):
     require_api_key(x_api_key)
     ranked = sorted(LOADS, key=lambda L: score(L, crit), reverse=True)
-    return {"matches": ranked[:3]}
+    return {"loads": ranked[:3]}
 
 @app.post("/evaluate_counter")
 async def evaluate_counter(request: Request, x_api_key: str | None = Header(None)):
