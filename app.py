@@ -1,6 +1,6 @@
 import os, json, sqlite3
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal
 from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse
@@ -84,35 +84,64 @@ def search_loads(crit: SearchCriteria, x_api_key: str | None = Header(None)):
     ranked = sorted(LOADS, key=lambda L: score(L, crit), reverse=True)
     return {"loads": ranked[:3]}
 
+class CounterOffer(BaseModel):
+    load_id: str
+    carrier_offer: float
+    round_num: int
+
 @app.post("/evaluate_counter")
-async def evaluate_counter(request: Request, x_api_key: str | None = Header(None)):
+async def evaluate_counter(data: CounterOffer, x_api_key: str | None = Header(None)):
     require_api_key(x_api_key)
-    body = await request.json()
-    load_id = body["load_id"]; carrier_offer = float(body["carrier_offer"]); round_num = int(body["round_num"])
-    load = next(L for L in LOADS if L["load_id"] == load_id)
+    
+    # Get load details
+    load = next(L for L in LOADS if L["load_id"] == data.load_id)
     lb = float(load["loadboard_rate"])
 
-    max_bump = lb * 0.12  # +12% ceiling
-    # +5% if pickup within 12h
+    # Calculate negotiation ceiling
+    max_bump = lb * 0.12
     pickup = datetime.fromisoformat(load["pickup_datetime"])
     now = datetime.now(pickup.tzinfo)
-    if (pickup - now).total_seconds() <= 12 * 3600: 
+    if (pickup - now).total_seconds() <= 12 * 3600:
         max_bump += lb * 0.05
 
     ceiling = lb + max_bump
-    if carrier_offer <= ceiling:
-        decision = "accept"; broker_offer = carrier_offer
-    elif round_num == 1:
-        decision = "counter"; broker_offer = lb
-    elif round_num == 2:
-        decision = "counter"; broker_offer = min(ceiling, lb * 1.05)
-    elif round_num == 3:
-        decision = "counter"; broker_offer = min(ceiling, lb * 1.08)
+
+    # Decide
+    if data.carrier_offer <= lb:
+        decision = "accept"
+        reason = "At or below listed rate — good margin."
+    elif data.carrier_offer <= ceiling:
+        decision = "accept"
+        reason = "Slightly above listed rate but within allowed bump."
     else:
-        decision = "reject"; broker_offer = lb
+        # Counter logic by round
+        if data.round_num == 1:
+            decision = "counter"
+            broker_offer = lb
+        elif data.round_num == 2:
+            decision = "counter"
+            broker_offer = min(ceiling, lb * 1.05)
+        elif data.round_num == 3:
+            decision = "counter"
+            broker_offer = min(ceiling, lb * 1.08)
+        else:
+            decision = "reject"
+            broker_offer = lb
+        return {
+            "decision": decision,
+            "broker_offer": round(broker_offer, 2),
+            "ceiling": round(ceiling, 2),
+            "listed_rate": lb,
+            "reason": "Counter offer above acceptable ceiling."
+        }
 
-    return {"decision": decision, "broker_offer": round(broker_offer, 2), "ceiling": round(ceiling, 2)}
-
+    return {
+        "decision": decision,
+        "broker_offer": round(data.carrier_offer, 2),
+        "ceiling": round(ceiling, 2),
+        "listed_rate": lb,
+        "reason": reason
+    }
 
 
 # Setup Table client
