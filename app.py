@@ -111,38 +111,43 @@ async def evaluate_counter(request: Request, x_api_key: str | None = Header(None
 
     return {"decision": decision, "broker_offer": round(broker_offer, 2), "ceiling": round(ceiling, 2)}
 
+from azure.data.tables import TableServiceClient
+import uuid, os
+
+# Setup Table client
+table_service = TableServiceClient.from_connection_string(os.getenv("TABLES_CONN_STRING"))
+table_client = table_service.get_table_client(table_name=os.getenv("TABLE_NAME", "calls"))
+
 @app.post("/log_call")
 async def log_call(request: Request, x_api_key: str | None = Header(None)):
     require_api_key(x_api_key)
     body = await request.json()
-    ext = body.get("extracted", {})
-    con = db()
-    con.execute("""
-        INSERT INTO calls (call_id, timestamp, outcome, sentiment, rounds, mc, dot, legal_name,
-                           selected_load_id, origin, destination, pickup_datetime, delivery_datetime,
-                           equipment_type, miles, loadboard_rate, agreed_rate, transcript)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, (
-        body.get("call_id"),
-        body.get("timestamp"),
-        body.get("outcome"),
-        body.get("sentiment"),
-        ext.get("rounds"),
-        ext.get("mc"),
-        ext.get("dot"),
-        ext.get("legal_name"),
-        ext.get("selected_load_id"),
-        ext.get("origin"),
-        ext.get("destination"),
-        ext.get("pickup_datetime"),
-        ext.get("delivery_datetime"),
-        ext.get("equipment_type"),
-        ext.get("miles"),
-        ext.get("loadboard_rate"),
-        ext.get("agreed_rate"),
-        body.get("transcript")
-    ))
-    con.commit(); con.close()
+    ext = body.get("extracted", {}) or {}
+
+    entity = {
+        "PartitionKey": "CallLogs",
+        "RowKey": str(uuid.uuid4()),  # unique ID
+        "call_id": body.get("call_id"),
+        "timestamp": body.get("timestamp"),
+        "outcome": body.get("outcome"),
+        "sentiment": body.get("sentiment"),
+        "rounds": ext.get("rounds"),
+        "mc": ext.get("mc"),
+        "dot": ext.get("dot"),
+        "legal_name": ext.get("legal_name"),
+        "selected_load_id": ext.get("selected_load_id"),
+        "origin": ext.get("origin"),
+        "destination": ext.get("destination"),
+        "pickup_datetime": ext.get("pickup_datetime"),
+        "delivery_datetime": ext.get("delivery_datetime"),
+        "equipment_type": ext.get("equipment_type"),
+        "miles": ext.get("miles"),
+        "loadboard_rate": ext.get("loadboard_rate"),
+        "agreed_rate": ext.get("agreed_rate"),
+        "transcript": body.get("transcript")
+    }
+
+    table_client.create_entity(entity=entity)
     return {"stored": True}
 
 @app.get("/metrics.json")
