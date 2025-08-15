@@ -4,6 +4,8 @@ from typing import List, Dict, Any
 from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse
+from azure.data.tables import TableServiceClient
+import uuid
 
 API_KEY = os.getenv("API_KEY", "")
 DB_PATH = os.getenv("DB_PATH", "calls.db")
@@ -111,8 +113,7 @@ async def evaluate_counter(request: Request, x_api_key: str | None = Header(None
 
     return {"decision": decision, "broker_offer": round(broker_offer, 2), "ceiling": round(ceiling, 2)}
 
-from azure.data.tables import TableServiceClient
-import uuid, os
+
 
 # Setup Table client
 table_service = TableServiceClient.from_connection_string(os.getenv("TABLES_CONN_STRING"))
