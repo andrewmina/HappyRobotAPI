@@ -91,16 +91,28 @@ class CounterOffer(BaseModel):
 
 
 @app.get("/add-10-hours")
-def add_ten_hours(datetime_str: str = Query(..., description="ISO datetime string")):
+def add_ten_hours(
+    datetime_str: str,
+    x_api_key: str | None = Header(None)
+):
+    # auth (same as other endpoints)
+    require_api_key(x_api_key)
+
+    # parse + add hours, with clear errors
     try:
+        # Accept strict ISO 8601 with timezone like 2025-08-16T06:00:00-05:00
         dt = datetime.fromisoformat(datetime_str)
-    except ValueError:
-        return {"error": "Invalid datetime format. Use ISO 8601 (e.g. 2025-08-16T06:00:00-05:00)"}
-    
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid datetime format. Use ISO 8601, e.g. 2025-08-16T06:00:00-05:00"
+        )
+
     new_dt = dt + timedelta(hours=10)
     return {
-        "original_datetime": datetime_str,
-        "new_datetime": new_dt.isoformat()
+        "original_datetime": dt.isoformat(),
+        "new_datetime": new_dt.isoformat(),
+        "hours_added": 10
     }
 
 
