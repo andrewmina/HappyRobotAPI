@@ -1,7 +1,7 @@
 import os, json, sqlite3
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Literal
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request, Query
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse
 from azure.data.tables import TableServiceClient
@@ -88,6 +88,21 @@ class CounterOffer(BaseModel):
     load_id: str
     carrier_offer: float
     round_num: int
+
+
+@app.get("/add-10-hours")
+def add_ten_hours(datetime_str: str = Query(..., description="ISO datetime string")):
+    try:
+        dt = datetime.fromisoformat(datetime_str)
+    except ValueError:
+        return {"error": "Invalid datetime format. Use ISO 8601 (e.g. 2025-08-16T06:00:00-05:00)"}
+    
+    new_dt = dt + timedelta(hours=10)
+    return {
+        "original_datetime": datetime_str,
+        "new_datetime": new_dt.isoformat()
+    }
+
 
 @app.post("/evaluate_counter")
 async def evaluate_counter(data: CounterOffer, x_api_key: str | None = Header(None)):
