@@ -1,0 +1,26 @@
+name: Build and Deploy to ACR
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: az acr login --name happycontainer
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t happycontainer.azurecr.io/carrier-api:latest .
+          docker push happycontainer.azurecr.io/carrier-api:latest
