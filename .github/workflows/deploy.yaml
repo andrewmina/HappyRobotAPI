@@ -24,3 +24,10 @@ jobs:
         run: |
           docker build -t happycontainer.azurecr.io/carrier-api:latest .
           docker push happycontainer.azurecr.io/carrier-api:latest
+
+      - name: Deploy to Azure Web App (App Service)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: "carrier-api-plan"   # replace with your App Service name
+          slot-name: "production"
+          images: "happycontainer.azurecr.io/carrier-api:latest"
