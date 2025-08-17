@@ -1,4 +1,63 @@
-# Broker-facing Build Description (Acme Logistics)
+from reportlab.lib.pagesizes import LETTER
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+import pypandoc
+
+# Download pandoc if not present
+pypandoc.download_pandoc()
+
+# File paths
+pdf_path = "broker_build_description.pdf"
+txt_path = "email_to_client.txt"
+md_path = "broker_build_description.md"
+
+# Email content
+email_content = """To: c.becker@happyrobot.ai
+Cc: <your recruiter’s email>
+Subject: Inbound Carrier Sales POC — latest progress, demo links & next steps
+
+Hi Carlos,
+
+Ahead of our meeting, here’s a quick update on the Inbound Carrier Sales proof-of-concept:
+
+What’s working now
+* Inbound voice flow in HappyRobot: MC/DOT capture → FMCSA eligibility check → load search → pitch → 3-round negotiation → accept/transfer or decline → outcome & sentiment classification → call logging.
+* Backhaul finder: Optional step to identify a return load (delivery city → back to origin) within ≤ 10 hours of drop-off, same equipment preference.
+* Secure API (FastAPI) backing the flow: /search_loads, /evaluate_counter, /log_call, /metrics.json, /dashboard, and utility /add-hours for time math.
+* Metrics dashboard: Daily volume, wins, sentiment mix, equipment mix, avg agreed vs listed delta.
+* Containerized deployment on Azure (App Service for Containers) with CI/CD via GitHub Actions (build→push to ACR→deploy).
+* Security: HTTPS and API key required on all write/search endpoints.
+
+Demo assets
+* Web call trigger (browser-based “inbound call” — no phone number required): <link to your HappyRobot Web Call Trigger>
+* Dashboard (live): https://<your-app>.azurewebsites.net/dashboard
+* API base: https://<your-app>.azurewebsites.net
+
+What I’ll walk through live
+1. End-to-end inbound call, including MC verification and negotiation.
+2. Backhaul suggestion within the 10-hour window.
+3. Dashboard review and raw metrics endpoint.
+4. Deployment & security posture.
+
+Next steps / questions for you
+* Any specific lanes/equipment you want me to preload for the demo?
+* Preferred escalation path once a rate is accepted (transfer target, metadata to pass along)?
+* Optional: add your CRM/TMS webhook for confirmed loads.
+
+Thanks, and looking forward to the session!
+
+Best,
+<Your Name>
+<Title> | <Company>
+<Phone> | <Calendar link (optional)>
+"""
+
+# Save email as txt
+with open("email_to_client.txt", "w", encoding="utf-8") as f:
+    f.write(email_content)
+
+# Broker build description content (Markdown for reuse)
+broker_md = """# Broker-facing Build Description (Acme Logistics)
 
 ## A. Overview
 Acme Logistics’ inbound carrier sales process is automated using the HappyRobot platform and a secure API. When carriers call in (via a **web call trigger**, no phone purchase required), the assistant verifies eligibility (FMCSA), finds suitable loads, negotiates rates (up to three rounds), and—if agreed—transfers the call to a rep while logging structured outcomes and sentiment for analytics.
@@ -81,3 +140,22 @@ Each load includes:
 - Dynamic pricing models.  
 - CRM/TMS handoff.  
 - SLA monitoring and alerting.
+"""
+
+# Save Markdown file
+with open(md_path, "w", encoding="utf-8") as f:
+    f.write(broker_md)
+
+# Generate PDF from Markdown using pypandoc
+pypandoc.convert_text(
+    broker_md,
+    'pdf',
+    format='md',
+    outputfile=pdf_path,
+    extra_args=['--standalone', '--pdf-engine=wkhtmltopdf']  # or weasyprint
+)
+
+doc = SimpleDocTemplate(pdf_path, pagesize=LETTER)
+styles = getSampleStyleSheet()
+story = [Paragraph(line, styles["Normal"]) for line in broker_md.split("\n")]
+doc.build(story)
