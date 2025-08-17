@@ -174,6 +174,9 @@ async def log_call(request: Request, x_api_key: str | None = Header(None)):
     body = await request.json()
     ext = body.get("extracted", {}) or {}
 
+    # -------------------------
+    # 1) Write to Azure Table Storage
+    # -------------------------
     entity = {
         "PartitionKey": "CallLogs",
         "RowKey": str(uuid.uuid4()),  # unique ID
@@ -194,11 +197,40 @@ async def log_call(request: Request, x_api_key: str | None = Header(None)):
         "miles": ext.get("miles"),
         "loadboard_rate": ext.get("loadboard_rate"),
         "agreed_rate": ext.get("agreed_rate"),
-        "transcript": body.get("transcript")
+        "transcript": body.get("transcript"),
     }
+    try:
+        table_client.create_entity(entity=entity)
+    except Exception as e:
+        print("Azure Table insert failed:", e)
 
-    table_client.create_entity(entity=entity)
+    # -------------------------
+    # 2) Write to SQLite (for metrics.json)
+    # -------------------------
+    con = db()
+    try:
+        con.execute("""
+            INSERT INTO calls (
+                call_id, timestamp, outcome, sentiment, rounds, mc, dot, legal_name,
+                selected_load_id, origin, destination, pickup_datetime, delivery_datetime,
+                equipment_type, miles, loadboard_rate, agreed_rate, transcript
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            body.get("call_id"), body.get("timestamp"), body.get("outcome"),
+            body.get("sentiment"), ext.get("rounds"), ext.get("mc"), ext.get("dot"),
+            ext.get("legal_name"), ext.get("selected_load_id"), ext.get("origin"),
+            ext.get("destination"), ext.get("pickup_datetime"), ext.get("delivery_datetime"),
+            ext.get("equipment_type"), ext.get("miles"), ext.get("loadboard_rate"),
+            ext.get("agreed_rate"), body.get("transcript")
+        ))
+        con.commit()
+    except Exception as e:
+        print("SQLite insert failed:", e)
+    finally:
+        con.close()
+
     return {"stored": True}
+
 
 @app.get("/metrics.json")
 def metrics_json():
